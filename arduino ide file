@@ -1,0 +1,135 @@
+#include <IRremote.hpp>
+
+// IR Sensor Pin
+const int IR_RECEIVE_PIN = 15;
+
+// Motor A (Left Side)
+const int ENA = 22;
+const int IN1 = 26; // REPLACE with your actual IN1 pin
+const int IN2 = 27; // REPLACE with your actual IN2 pin
+
+// Motor B (Right Side)
+const int ENB = 23;
+const int IN3 = 14; // REPLACE with your actual IN3 pin
+const int IN4 = 12; // REPLACE with your actual IN4 pin
+
+// Remote Codes (Replace the 0s  recorded numbers)
+const unsigned long CODE_FORWARD = 27;
+const unsigned long CODE_BACKWARD = 15; 
+const unsigned long CODE_LEFT = 12;     
+const unsigned long CODE_RIGHT = 14;    
+const unsigned long CODE_STOP = 13;     
+const unsigned long CODE_SPEED_UP = 6;   // e.g., Volume Up
+const unsigned long CODE_SPEED_DOWN = 5; // e.g., Volume Down
+
+int currentSpeed = 150; // Starting speed (Range: 0 to 255)
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize IR Receiver
+  IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
+
+  // Set motor pins as outputs
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Apply initial speed and make sure motors are stopped
+  updateSpeed();
+  stopMotors();
+  
+  Serial.println("System Ready. Waiting for IR signals...");
+}
+
+void loop() {
+  if (IrReceiver.decode()) {
+    unsigned long irCode = IrReceiver.decodedIRData.command;
+    
+    // Ignore repeat codes (0) or garbage data
+    if (irCode != 0) { 
+      Serial.print("Received Code: ");
+      Serial.println(irCode);
+
+      if (irCode == CODE_FORWARD) {
+        moveForward();
+      } 
+      else if (irCode == CODE_BACKWARD) {
+        moveBackward();
+      } 
+      else if (irCode == CODE_LEFT) {
+        turnLeft();
+      } 
+      else if (irCode == CODE_RIGHT) {
+        turnRight();
+      } 
+      else if (irCode == CODE_STOP) {
+        stopMotors();
+      } 
+      else if (irCode == CODE_SPEED_UP) {
+        currentSpeed += 85; // Increase speed by 25
+        if (currentSpeed > 255) currentSpeed = 255;
+        updateSpeed();
+        Serial.print("Speed increased to: ");
+        Serial.println(currentSpeed);
+      } 
+      else if (irCode == CODE_SPEED_DOWN) {
+        currentSpeed -= 85; // Decrease speed by 25
+        if (currentSpeed < 0) currentSpeed = 0;
+        updateSpeed();
+        Serial.print("Speed decreased to: ");
+        Serial.println(currentSpeed);
+      }
+    }
+    
+    // Resume listening for the next signal
+    IrReceiver.resume(); 
+  }
+}
+
+// --- Motor Control Functions ---
+
+void updateSpeed() {
+  analogWrite(ENA, currentSpeed);
+  analogWrite(ENB, currentSpeed);
+}
+
+void moveForward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void moveBackward() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void turnLeft() {
+  // Left wheels reverse, right wheels forward
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void turnRight() {
+  // Left wheels forward, right wheels reverse
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void stopMotors() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
